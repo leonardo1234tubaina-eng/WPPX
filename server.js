@@ -1,5 +1,6 @@
 require('dotenv').config();
 const wppconnect = require('@wppconnect-team/wppconnect');
+const puppeteer = require('puppeteer');
 const { createClient } = require('@supabase/supabase-js');
 const express = require('express');
 const cors = require('cors');
@@ -74,8 +75,10 @@ async function initWhatsApp() {
           startPolling();
         }
       },
+      autoClose: 120000, // Tenta por 2 minutos
       headless: true,
       puppeteerOptions: {
+        executablePath: puppeteer.executablePath(),
         args: [
           '--no-sandbox', '--disable-setuid-sandbox',
           '--disable-dev-shm-usage', '--disable-accelerated-2d-canvas',
@@ -91,6 +94,10 @@ async function initWhatsApp() {
   } catch (err) {
     console.error('❌ Erro ao iniciar WPPConnect:', err.message);
     connectionStatus = 'disconnected';
+    
+    // Se o QR Code expirou e ele fechou, tenta iniciar de novo
+    console.log('🔄 Reiniciando WPPConnect em 5 segundos para gerar novo QR...');
+    setTimeout(initWhatsApp, 5000);
   }
 }
 
