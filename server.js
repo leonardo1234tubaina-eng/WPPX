@@ -19,6 +19,15 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// ─── Tratamento de Erros Globais (Para debug no Render) ─────────────────────
+process.on('uncaughtException', (err) => {
+  console.error('🚨 CRITICAL ERROR (Uncaught Exception):', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('🚨 CRITICAL ERROR (Unhandled Rejection):', reason);
+});
+
 // ─── Estado global ────────────────────────────────────────────────────────────
 let whatsappClient = null;
 let connectionStatus = 'disconnected';
@@ -80,9 +89,16 @@ async function initWhatsApp() {
       puppeteerOptions: {
         executablePath: puppeteer.executablePath(),
         args: [
-          '--no-sandbox', '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage', '--disable-accelerated-2d-canvas',
-          '--no-first-run', '--no-zygote', '--single-process', '--disable-gpu'
+          '--no-sandbox', 
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage', 
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run', 
+          '--no-zygote', 
+          '--single-process', 
+          '--disable-gpu',
+          '--disable-extensions',
+          '--js-flags="--max-old-space-size=250"'
         ],
       },
       logQR: false,
@@ -95,9 +111,11 @@ async function initWhatsApp() {
     console.error('❌ Erro ao iniciar WPPConnect:', err.message);
     connectionStatus = 'disconnected';
     
-    // Se o QR Code expirou e ele fechou, tenta iniciar de novo
-    console.log('🔄 Reiniciando WPPConnect em 5 segundos para gerar novo QR...');
-    setTimeout(initWhatsApp, 5000);
+    // Só reinicia automaticamente se o erro foi timeout do QR Code (Auto Close Called)
+    if (err.message.includes('Auto Close Called') || err.message.includes('browserClose')) {
+      console.log('🔄 Reiniciando WPPConnect em 5 segundos para gerar novo QR...');
+      setTimeout(initWhatsApp, 5000);
+    }
   }
 }
 
@@ -300,8 +318,8 @@ async function sendToHelpers(orderId, orderData, helpers, maxHelpers, delaySecon
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // ─── Start ────────────────────────────────────────────────────────────────────
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n🚀 SOLFY WhatsApp Backend - Porta ${PORT}`);
-  console.log(`📊 Status: http://localhost:${PORT}/api/status\n`);
+  console.log(`📊 Status: Porta vinculada para acesso externo\n`);
   initWhatsApp();
 });
